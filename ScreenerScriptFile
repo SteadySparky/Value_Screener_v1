@@ -1,0 +1,57 @@
+import yfinance as yf
+import pandas as pd
+import pandas_ta as ta
+from datetime import datetime, timedelta
+
+# 1. Define your universe (Example Tickers for USA and UK)
+# USA: SPY (S&P 500) | UK: FTSE 100 (.L suffix)
+tickers = ["AAPL", "MSFT", "GOOGL", "TSLA", "VOD.L", "BP.L", "HSBA.L", "RIO.L"]
+
+def screen_stocks(ticker_list):
+    results = []
+    
+    for ticker in ticker_list:
+        try:
+            # Download recent data (last 60 days to ensure enough for Weekly/Daily RSI)
+            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+            if df.empty: continue
+
+            # --- CRITERIA 1: 3-4 Day Price Drop ---
+            # Check if the last 3 days' closes are each lower than the previous day
+            df['Price_Drop'] = df['Close'] < df['Close'].shift(1)
+            recent_drops = df['Price_Drop'].tail(3).all() # Change to .tail(4) for 4 days
+
+            # --- CRITERIA 2: RSI Oversold (Daily) ---
+            # Using pandas_ta for easy RSI calculation
+            df['RSI'] = ta.rsi(df['Close'], length=14)
+            current_rsi = df['RSI'].iloc[-1]
+            is_oversold = current_rsi < 35  # Threshold usually 30, but 35 catches early turns
+
+            # --- CRITERIA 3: Value Filter (Low P/E) ---
+            info = yf.Ticker(ticker).info
+            pe_ratio = info.get('forwardPE', 100) # Default to 100 if not found
+            is_value = pe_ratio < 20 # Standard value benchmark
+
+            if recent_drops and is_oversold and is_value:
+                results.append({
+                    "Ticker": ticker,
+                    "RSI": round(current_rsi, 2),
+                    "P/E": pe_ratio,
+                    "Price": round(df['Close'].iloc[-1], 2)
+                })
+                
+        except Exception as e:
+            print(f"Could not scan {ticker}: {e}")
+
+    return pd.DataFrame(results)
+
+# Run the screener
+print("Scanning markets for oversold value stocks...")
+found_stocks = screen_stocks(tickers)
+
+if not found_stocks.empty:
+    print("\n--- Potential Opportunities Found ---")
+    print(found_stocks)
+else:
+    print("\nNo stocks matched your criteria today.")
+Screener Test File
