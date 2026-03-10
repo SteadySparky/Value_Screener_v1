@@ -55,3 +55,7 @@ if not found_stocks.empty:
 else:
     print("\nNo stocks matched your criteria today.")
 Screener Test File
+
+if not found_stocks.empty:
+    found_stocks.to_csv("hits.csv", index=False)
+    print("Results saved to hits.csv")
