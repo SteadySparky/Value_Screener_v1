@@ -58,6 +58,12 @@ jobs:
       - name: Run Screener
         run: python screener.py
       - name: Run a multi-line script
+      
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
+       - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-screen-results
+          path: hits.csv
